@@ -1,0 +1,17 @@
+{
+  "name": "tontoo-code",
+  "version": "1.0.0",
+  "description": "A Code tool for Tontoo projects.",
+  "main": "tont.js",
+  "bin": {
+    "tont": "./tont.js",
+    "tontoo": "./tont.js"
+  },
+  "author": "arlomu",
+  "license": "ISC",
+  "dependencies": {
+    "archiver": "^7.0.1",
+    "fs-extra": "^11.3.1",
+    "yauzl": "^2.10.0"
+  }
+}
