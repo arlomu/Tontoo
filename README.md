@@ -13,11 +13,15 @@ A modern, expressive programming language built on Node.js, designed to make pro
 
 ## Installation
 
-### Global Installation Linux
+### Installation Linux
 ```bash
 curl -O https://raw.githubusercontent.com/arlomu/Tontoo/main/install.sh
 sudo bash install.sh
 ```
+
+### Installation Windows
+Download install.bat
+Run install.bat
 
 ### From Source
 ```bash
