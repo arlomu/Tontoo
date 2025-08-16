@@ -1,258 +1,158 @@
-# Tontoo Code AI Documentation (Extended)
-# Version: 2.0.0
-# Description: Detaillierte und strukturierte Referenz für eine KI zur Generierung,
-#              Analyse und Fehlerbehebung von Tontoo Code. Jede Funktion ist mit
-#              ihrer Syntax, detaillierten Parametern, möglichen Rückgabewerten
-#              und speziellen Hinweisen dokumentiert.
+# Tontoo Code Documentation
+version: 1.9.0
+author: arlomu
+website: https://arlocraftmc.de
 
-language:
-  name: Tontoo Code
-  file_extension: ".tont"
-  compiled_extension: ".tontoo"
-  interpreter_command: "tont"
-  platform: Node.js
+# Core Features
+features:
+  - Build system for Tontoo projects
+  - Package management
+  - Web server with SSL support
+  - API endpoints
+  - User authentication
+  - MySQL database integration
+  - File operations
+  - Command execution
 
-core_concepts:
-  - name: Variables
-    syntax: 'VB: KEY: "value"'
-    description: "Deklariert eine globale Variable. Der Wert ist immer ein String. Variablen werden mit dem Präfix '$' referenziert. Variablennamen sind Großbuchstaben (A-Z), Zahlen (0-9) und Unterstriche (_)."
-    notes:
-      - "Variablen sind global im gesamten Projekt zugänglich."
-      - "Werte können aus anderen Befehlen zugewiesen werden (z. B. `netrequest`)."
-
-  - name: Functions
-    syntax: ":start: function_name ... :end:"
-    description: "Definiert einen Codeblock, der erst bei Aufruf ausgeführt wird. Funktionen werden mit `:start: [name]` und `:end:` markiert."
-    notes:
-      - "Die Funktion `dataadd` im `Main`-Typ wird beim Start automatisch ausgeführt."
-      - "Funktionen müssen vor dem Aufruf definiert sein."
-
-  - name: File Structure
-    description: "Ein Tontoo-Projekt ist eine Sammlung von .tont-Dateien. Eine Datei muss der Haupttyp sein. Alle Dateien werden in eine einzelne .tontoo-Datei kompiliert."
-    types:
-      - name: Main
-        syntax: "type: Main"
-        description: "Der Haupt-Einstiegspunkt des Programms. Führt die `dataadd`-Funktion automatisch aus."
-      - name: Extra
-        syntax: "type: Extra"
-        description: "Ein Modul, das von anderen Dateien geladen werden kann. Wird nicht automatisch ausgeführt."
-
-  - name: File Loading
-    syntax: "load: { file1, file2 }"
-    description: "Lädt Code aus anderen .tont-Dateien anhand ihres 'dat'-Namens. Die Dateierweiterung wird weggelassen."
-    notes:
-      - "Jede Datei wird nur einmal geladen, um Redundanz zu vermeiden."
-
-  - name: Execution
-    description: "Befehle werden sequenziell ausgeführt, sofern sie sich nicht in einer Funktion befinden. Der `tont <file.tontoo>`-Befehl entschlüsselt die Daten in den Arbeitsspeicher. Alle Befehle operieren auf den In-Memory-Daten, es sei denn, sie betreffen explizit das Dateisystem (z.B. `copyFile`)."
-
+# Commands
 commands:
-  # File System & I/O
-  - name: copyFile
-    syntax: "copyFile { \"from\": \"source\", \"to\": \"dest\" }"
-    description: "Kopiert eine Datei von einem Quellpfad zu einem Zielpfad."
-    parameters:
-      - name: from
-        type: string
-        description: "Der Pfad zur Quelldatei. Kann Variablen enthalten."
-      - name: to
-        type: string
-        description: "Der Pfad zum Ziel. Kann Variablen enthalten."
-    notes:
-      - "Dateien außerhalb des Projektverzeichnisses können nicht kopiert werden."
-
-  - name: deleteFile
-    syntax: "deleteFile { \"file\": \"path\" }"
-    description: "Löscht eine bestimmte Datei."
-    parameters:
-      - name: file
-        type: string
-        description: "Der Pfad der zu löschenden Datei."
-    notes:
-      - "Der Befehl gibt keinen Fehler aus, wenn die Datei nicht existiert."
-
-  - name: deleteFolder
-    syntax: "deleteFolder { \"folder\": \"path\" }"
-    description: "Löscht ein Verzeichnis und alle seine Inhalte rekursiv."
-    parameters:
-      - name: folder
-        type: string
-        description: "Der Pfad des zu löschenden Ordners."
-    notes:
-      - "Dieser Befehl ist irreversibel. Vorsicht bei der Verwendung."
-
-  - name: moveFile
-    syntax: "moveFile { \"from\": \"source\", \"to\": \"dest\" }"
-    description: "Verschiebt eine Datei von einem Quellpfad zu einem Zielpfad."
-    parameters:
-      - name: from
-        type: string
-        description: "Der Pfad der zu verschiebenden Datei."
-      - name: to
-        type: string
-        description: "Der Zielpfad."
-
-  # Web & Networking
-  - name: startWEB
-    syntax: "startWEB: /public/ { \"port\": \"3000\", \"host\": \"localhost\", \"404\": \"404.html\", \"landing\": \"index.html\", \"id\": \"webserver1\" }"
-    description: "Startet einen HTTP-Server. Konfiguration als JSON-ähnliches Objekt. Die ID dient zur Verwaltung mehrerer Server."
-    parameters:
-      - name: path
-        type: string
-        description: "Das Stammverzeichnis, das vom Webserver bedient werden soll."
-      - name: port
-        type: string
-        description: "Der Port, auf dem der Server lauscht. Standard: '3000'."
-      - name: host
-        type: string
-        description: "Der Host, auf dem der Server lauscht. Standard: 'localhost'."
-      - name: 404
-        type: string
-        description: "Der Dateiname für die 404-Fehlerseite."
-      - name: landing
-        type: string
-        description: "Der Dateiname für die Startseite."
-      - name: id
-        type: string
-        description: "Eine eindeutige ID für den Webserver zur Verwaltung."
-    notes:
-      - "Dieser Befehl hält den Prozess am Laufen, bis er manuell beendet wird (`Ctrl+C`)."
-
-  - name: checkWEB
-    syntax: "checkWEB: id"
-    description: "Überprüft den Status eines Webservers anhand seiner ID."
-    parameters:
-      - name: id
-        type: string
-        description: "Die ID des zu überprüfenden Webservers."
-    returns:
-      - 1: "Online"
-      - 2: "Offline"
-      - 3: "Fehler"
-    notes:
-      - "Dieser Befehl wird normalerweise in Verbindung mit dem `if`-Befehl verwendet."
-
-  - name: if
-    syntax: "if: id: status { \"WEBstart\": \"id\", \"console\": \"message\" }"
-    description: "Ein bedingter Befehl. Prüft, ob der Status eines Webservers einem bestimmten Code entspricht, und führt dann die Befehle im Block aus."
-    parameters:
-      - name: id
-        type: string
-        description: "Die ID des Webservers."
-      - name: status
-        type: integer
-        description: "Der zu vergleichende Statuscode (1, 2 oder 3)."
-      - name: WEBstart
-        type: string
-        description: "Optionale Aktion: Startet den Webserver mit dieser ID."
-      - name: console
-        type: string
-        description: "Optionale Aktion: Gibt eine Nachricht in die Konsole aus."
-
-  - name: netrequest
-    syntax: "netrequest: url { \"type\": \"GET\", \"VB\": \"KEY\" }"
-    description: "Führt eine HTTP-Anfrage durch und speichert die Antwort im Textformat in einer Variable."
-    parameters:
-      - name: url
-        type: string
-        description: "Die URL, an die die Anfrage gesendet werden soll."
-      - name: type
-        type: string
-        description: "Der HTTP-Methodentyp (z. B. 'GET', 'POST')."
-      - name: VB
-        type: string
-        description: "Der Name der Variable, in der die Antwort gespeichert wird."
-    notes:
-      - "Dieser Befehl ist asynchron und speichert die Antwort, sobald sie verfügbar ist."
-
-  # System & Utilities
-  - name: console.log
-    syntax: "console.log: \"message\""
-    description: "Gibt eine Nachricht in der Konsole aus. Unterstützt Variablen-Substitution (`$VARIABLE`)."
-    parameters:
-      - name: message
-        type: string
-        description: "Die auszugebende Nachricht."
-
-  - name: run
-    syntax: "run: command { \"wait\": \"true\" }"
-    description: "Führt einen Shell-Befehl aus."
-    parameters:
-      - name: command
-        type: string
-        description: "Der auszuführende Shell-Befehl."
-      - name: wait
-        type: boolean
-        description: "Wenn 'true', wartet der Interpreter, bis der Befehl abgeschlossen ist. Wenn 'false', wird er im Hintergrund ausgeführt."
-
-  - name: scedule
-    syntax: "scedule: seconds { \"function\": \"name\" }"
-    description: "Ruft eine Funktion wiederholt in einem bestimmten Zeitintervall auf."
-    parameters:
-      - name: seconds
-        type: integer
-        description: "Die Wartezeit in Sekunden zwischen den Aufrufen."
-      - name: function
-        type: string
-        description: "Der Name der aufzurufenden Funktion."
-
+  - name: build
+    description: Build the current project into a .tontoo file
+    usage: tontoo build
+  
+  - name: dev
+    description: Run the project in development mode
+    usage: tontoo dev
+  
+  - name: setup
+    description: Create a new Tontoo project structure
+    usage: tontoo setup
+  
+  - name: install
+    description: Install a package
+    usage: tontoo install <package_name>[@version]
+  
+  - name: uninstall
+    description: Uninstall a package
+    usage: tontoo uninstall <package_name>
+  
+  - name: update
+    description: Update all or specific packages
+    usage: tontoo update [package_name]
+  
   - name: info
-    syntax: "info: VB_NAME"
-    description: "Ruft Systeminformationen (CPU-Auslastung und RAM-Nutzung) ab und speichert sie in einer Variablen."
-    parameters:
-      - name: VB_NAME
-        type: string
-        description: "Der Name der Variable, in der die Informationen gespeichert werden."
-    notes:
-      - "Der zurückgegebene Wert ist ein formatierter String, z. B. 'CPU: 5.25%, RAM: 75.10%'."
+    description: Show version information
+    usage: tontoo info
+  
+  - name: run
+    description: Run a .tontoo project file
+    usage: tontoo <file.tontoo>
 
-  - name: hash
-    syntax: "hash: \"$VARIABLE\" { \"VB\": \"KEY\" }"
-    description: "Generiert einen SHA-256-Hash aus einem String oder dem Inhalt einer Variable und speichert ihn in einer neuen Variable."
-    parameters:
-      - name: value
-        type: string
-        description: "Der zu hashende Wert. Kann eine Variable sein."
-      - name: VB
-        type: string
-        description: "Der Name der Variable, in der der Hash gespeichert wird."
+# Package System
+package_system:
+  manifest: package.yml
+  location: tont-packets/
+  features:
+    - Version management
+    - Dependency tracking
+    - Post-install scripts
+    - Pre-uninstall scripts
+    - Metadata (name, version, description)
 
-  - name: encrypt
-    syntax: "encrypt: \"message\" { \"key\": \"$HASH_KEY\", \"VB\": \"KEY\" }"
-    description: "Verschlüsselt eine Nachricht mit dem AES-256-CBC-Algorithmus. Der Schlüssel muss ein 32-Byte-Hash (hex) sein."
-    parameters:
-      - name: value
-        type: string
-        description: "Die zu verschlüsselnde Nachricht."
-      - name: key
-        type: string
-        description: "Der Verschlüsselungsschlüssel. Muss ein SHA-256-Hash in Hex-Format sein."
-      - name: VB
-        type: string
-        description: "Der Name der Variable, in der die verschlüsselte Nachricht gespeichert wird."
-    notes:
-      - "Die Ausgabe ist eine Kombination aus Initialisierungsvektor (IV) und verschlüsseltem Text im Format 'iv:encrypted_text'."
+# Language Syntax
+syntax:
+  variables:
+    - pattern: VB: NAME: "value"
+      description: Define a variable
+  
+  functions:
+    - pattern: :start: functionName
+      description: Start a function block
+    - pattern: :end:
+      description: End a function block
+  
+  mysql:
+    - pattern: mysql: "connectionId" { config }
+      description: Setup MySQL connection
+  
+  web_api:
+    - pattern: webAPI: "apiName" { config }
+      description: Define a web API endpoint
+  
+  web_server:
+    - pattern: startWEB: "/path" { config }
+      description: Start a web server
+  
+  file_operations:
+    - pattern: copyFile { "from": "source", "to": "dest" }
+      description: Copy a file
+    - pattern: deleteFile "path"
+      description: Delete a file
+    - pattern: addFolder "path"
+      description: Create a folder
+  
+  commands:
+    - pattern: run: "command"
+      description: Execute a system command
+  
+  logging:
+    - pattern: console.log: "message"
+      description: Print a message to console
 
-  - name: decrypt
-    syntax: "decrypt: \"$ENCRYPTED_MESSAGE\" { \"key\": \"$HASH_KEY\", \"VB\": \"KEY\" }"
-    description: "Entschlüsselt eine Nachricht, die zuvor mit dem `encrypt`-Befehl verschlüsselt wurde."
+# MySQL Integration
+mysql:
+  connection:
     parameters:
-      - name: value
-        type: string
-        description: "Die zu entschlüsselnde Nachricht im Format 'iv:encrypted_text'."
-      - name: key
-        type: string
-        description: "Der Entschlüsselungsschlüssel. Muss derselbe Schlüssel sein, der zur Verschlüsselung verwendet wurde."
-      - name: VB
-        type: string
-        description: "Der Name der Variable, in der die entschlüsselte Nachricht gespeichert wird."
+      - host
+      - user
+      - password
+      - database
+  usage: |
+    After setting up a connection with mysql: "id" { config },
+    you can use ${id}_query(sql, params) to execute queries
 
-  - name: delVB
-    syntax: "delVB: \"KEY\""
-    description: "Löscht eine Variable aus dem Arbeitsspeicher des Interpreters."
-    parameters:
-      - name: KEY
-        type: string
-        description: "Der Name der zu löschenden Variable."
-    notes:
-      - "Dieser Befehl kann zur Freigabe von Speicher verwendet werden, insbesondere bei sensiblen Daten wie Schlüsseln."
+# Web Server Features
+web_server:
+  features:
+    - Static file serving
+    - SSL/TLS support
+    - Custom error pages
+    - API routing
+    - User authentication
+  config_options:
+    - port: HTTP port
+    - host: Server host
+    - path: Public directory
+    - landing: Default file
+    - 404: Custom 404 page
+    - ssl: Enable SSL (true/false)
+    - sslport: HTTPS port
+    - sslbits: Key strength
+    - api: API base path
+    - user: Enable auth (true/false)
+
+# Examples
+examples:
+  - name: Basic web server
+    code: |
+      startWEB: /public/
+      {
+        "port": "8080",
+        "host": "localhost",
+        "landing": "index.html"
+      }
+  
+  - name: MySQL connection
+    code: |
+      mysql: "db"
+      {
+        "host": "localhost",
+        "user": "root",
+        "password": "",
+        "database": "test"
+      }
+      
+      :start: getUsers
+      const users = await ${db}_query("SELECT * FROM users");
+      console.log: "Users: ${users}"
+      :end:

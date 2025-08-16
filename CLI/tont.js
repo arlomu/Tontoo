@@ -11,16 +11,20 @@ const zlib = require('zlib');
 const { URLSearchParams } = require('url');
 const archiver = require('archiver');
 const fse = require('fs-extra');
+const mysql = require('mysql2/promise');
+const yaml = require('js-yaml');
 
 // --- CONFIGURATION ---
 const DEVELOPER_NAME = 'arlomu';
 const DEVELOPER_WEBSITE = 'https://arlocraftmc.de';
-const TONTOO_VERSION = '1.8.0'; // Version updated
+const DEVELOPER_REPO = 'github.com/arlomu/Tontoo';
+const TONTOO_VERSION = '1.9.0';
 const SECRET_KEY = 'tontoo-super-secret-key-123456789012345';
 const PACKAGE_REGISTRY_URL = 'https://github.com/arlomu/tontoo-packet';
 const PACKAGES_DIR_NAME = 'tont-packets';
+const PACKAGE_MANIFEST = 'package.yml';
 
-// --- Encryption and decryption functions at the top level ---
+// --- Encryption and decryption functions ---
 function encryptData(data) {
   const key = crypto.createHash('sha256').update(SECRET_KEY).digest();
   const iv = crypto.randomBytes(16);
@@ -41,28 +45,22 @@ function decryptData(data) {
   return decrypted;
 }
 
-// --- Main logic: Process commands ---
+// --- Main command processing ---
 const args = process.argv.slice(2);
 const command = args[0];
 const param = args[1];
 
 if (command === 'build') {
-  buildProject(false); // The default build process writes to a file
+  buildProject(false);
 } else if (command === 'dev') {
-  buildProject(true); // Dev mode runs the build directly in memory
+  buildProject(true);
 } else if (command === 'info') {
-  console.log(`
-  Tontoo Code - Info
-  ---------------------
-  Version:    ${TONTOO_VERSION}
-  Developer: ${DEVELOPER_NAME}
-  Website:   ${DEVELOPER_WEBSITE}
-  `);
+  showInfo();
 } else if (command === 'setup') {
   setupProject();
 } else if (command === 'install') {
   if (!param) {
-    console.error('Please use tont install <package_name> to install a package.');
+    console.error('Please use tont install <package_name>[@version] to install a package.');
     process.exit(1);
   }
   installPackage(param);
@@ -72,38 +70,18 @@ if (command === 'build') {
     process.exit(1);
   }
   uninstallPackage(param);
+} else if (command === 'update') {
+  updatePackages(param);
 } else if (command && fs.existsSync(command) && command.endsWith('.tontoo')) {
   runProjectFromFile(command);
 } else {
-  console.log(`
-
-  Run a Tontoo project:
-  tontoo <file.tontoo>
-
-  Build a Tontoo project:
-  tontoo build
-
-  Create a new Tontoo project:
-  tontoo setup
-
-  Install a package:
-  tontoo install <package_name>
-
-  Uninstall a package:
-  tontoo uninstall <package_name>
-
-  Run a Tontoo project in development mode:
-  tontoo dev
-
-  Show information about Tontoo:
-  tontoo info
-
-  `);
+  showHelp();
 }
 
 // =================================================================
-// PACKAGE MANAGEMENT LOGIC
+// PACKAGE MANAGEMENT LOGIC (IMPROVED)
 // =================================================================
+
 function readTontooJson() {
   const rootDir = process.cwd();
   const tontooJsonPath = path.join(rootDir, 'tontoo.json');
@@ -119,49 +97,80 @@ function writeTontooJson(data) {
   fs.writeFileSync(tontooJsonPath, JSON.stringify(data, null, 2));
 }
 
-function installPackage(packageName) {
+function readPackageManifest(packagePath) {
+  const manifestPath = path.join(packagePath, PACKAGE_MANIFEST);
+  if (fs.existsSync(manifestPath)) {
+    return yaml.load(fs.readFileSync(manifestPath, 'utf8'));
+  }
+  return null;
+}
+
+async function installPackage(packageSpec) {
+  const [packageName, version] = packageSpec.split('@');
   const rootDir = process.cwd();
   const packagesDir = path.join(rootDir, PACKAGES_DIR_NAME);
   const packagePath = path.join(packagesDir, packageName);
   const tempDir = path.join(os.tmpdir(), `tontoo-temp-${Date.now()}`);
 
   if (fs.existsSync(packagePath)) {
-    console.warn(`Warning: Package "${packageName}" is already installed`);
+    console.warn(`Warning: Package "${packageName}" is already installed. Use "tont update" to update.`);
     return;
   }
 
-  console.log(`Installing package "${packageName}"...`);
+  console.log(`Installing package "${packageSpec}"...`);
   try {
     fs.mkdirSync(packagesDir, { recursive: true });
 
-    // Clone the entire repository into a temporary directory
+    // Clone the repository into a temporary directory
     const repoUrl = `${PACKAGE_REGISTRY_URL}.git`;
     console.log(`Cloning from ${repoUrl}...`);
     execSync(`git clone --depth 1 ${repoUrl} "${tempDir}"`, { stdio: 'ignore' });
 
-    // Move the specific package folder from the cloned repo to tont-packets
+    // Check if package exists and read its manifest
     const sourcePackageDir = path.join(tempDir, packageName);
     if (!fs.existsSync(sourcePackageDir)) {
-      throw new Error(`Package "${packageName}" not found`);
+      throw new Error(`Package "${packageName}" not found in registry`);
     }
 
-    console.log(`Copying package from "${sourcePackageDir}" to "${packagePath}"...`);
+    const manifest = readPackageManifest(sourcePackageDir);
+    if (!manifest) {
+      throw new Error(`Package manifest (${PACKAGE_MANIFEST}) not found`);
+    }
+
+    // Check version if specified
+    if (version && manifest.version !== version) {
+      throw new Error(`Version ${version} not found. Available version: ${manifest.version}`);
+    }
+
+    console.log(`Installing ${manifest.name}@${manifest.version}...`);
+    console.log(`Description: ${manifest.description || 'No description'}`);
+
+    // Copy package files
     fse.copySync(sourcePackageDir, packagePath, { overwrite: true });
 
-    // Remove the temporary directory
-    fs.rmSync(tempDir, { recursive: true, force: true });
-
-    // Update tontoo.json with the full path to the package in the registry
+    // Update tontoo.json
     const tontooJson = readTontooJson();
-    tontooJson.dependencies[packageName] = `${PACKAGE_REGISTRY_URL}/tree/main/${packageName}`;
+    tontooJson.dependencies[packageName] = {
+      version: manifest.version,
+      registry: `${PACKAGE_REGISTRY_URL}/tree/main/${packageName}`,
+      installedAt: new Date().toISOString()
+    };
     writeTontooJson(tontooJson);
 
-    console.log(`Package "${packageName}" successfully installed!`);
+    // Run post-install script if defined
+    if (manifest.scripts && manifest.scripts.postinstall) {
+      console.log('Running post-install script...');
+      execSync(manifest.scripts.postinstall, { cwd: packagePath, stdio: 'inherit' });
+    }
+
+    console.log(`\nSuccessfully installed ${manifest.name}@${manifest.version}!`);
   } catch (error) {
-    console.error(`\nError installing "${packageName}".`);
+    console.error(`\nError installing "${packageSpec}".`);
     console.error(`Details: ${error.message}`);
     fs.rmSync(tempDir, { recursive: true, force: true });
     process.exit(1);
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
   }
 }
 
@@ -175,8 +184,17 @@ function uninstallPackage(packageName) {
     return;
   }
 
+  // Read manifest for pre-uninstall script
+  const manifest = readPackageManifest(packagePath);
+  
   console.log(`Removing package "${packageName}"...`);
   try {
+    // Run pre-uninstall script if defined
+    if (manifest && manifest.scripts && manifest.scripts.preuninstall) {
+      console.log('Running pre-uninstall script...');
+      execSync(manifest.scripts.preuninstall, { cwd: packagePath, stdio: 'inherit' });
+    }
+
     fs.rmSync(packagePath, { recursive: true, force: true });
 
     // Update tontoo.json
@@ -189,6 +207,91 @@ function uninstallPackage(packageName) {
     console.error(`\nError uninstalling package "${packageName}".`);
     console.error(`Details: ${error.message}`);
     process.exit(1);
+  }
+}
+
+async function updatePackages(packageName = null) {
+  const rootDir = process.cwd();
+  const packagesDir = path.join(rootDir, PACKAGES_DIR_NAME);
+  const tontooJson = readTontooJson();
+  
+  if (!tontooJson.dependencies || Object.keys(tontooJson.dependencies).length === 0) {
+    console.log('No packages installed to update.');
+    return;
+  }
+
+  const packagesToUpdate = packageName ? 
+    { [packageName]: tontooJson.dependencies[packageName] } : 
+    tontooJson.dependencies;
+
+  for (const [pkgName, pkgData] of Object.entries(packagesToUpdate)) {
+    try {
+      const packagePath = path.join(packagesDir, pkgName);
+      if (!fs.existsSync(packagePath)) {
+        console.warn(`Package "${pkgName}" is not installed. Skipping...`);
+        continue;
+      }
+
+      console.log(`Checking updates for ${pkgName}...`);
+      const tempDir = path.join(os.tmpdir(), `tontoo-update-${Date.now()}`);
+      const repoUrl = `${PACKAGE_REGISTRY_URL}.git`;
+
+      // Clone the latest version
+      execSync(`git clone --depth 1 ${repoUrl} "${tempDir}"`, { stdio: 'ignore' });
+
+      const sourcePackageDir = path.join(tempDir, pkgName);
+      if (!fs.existsSync(sourcePackageDir)) {
+        console.warn(`Package "${pkgName}" not found in registry. Skipping...`);
+        continue;
+      }
+
+      const manifest = readPackageManifest(sourcePackageDir);
+      if (!manifest) {
+        console.warn(`Package manifest not found for "${pkgName}". Skipping...`);
+        continue;
+      }
+
+      if (manifest.version === pkgData.version) {
+        console.log(`${pkgName} is already up to date (${pkgData.version}).`);
+        continue;
+      }
+
+      console.log(`Updating ${pkgName} from ${pkgData.version} to ${manifest.version}...`);
+
+      // Run pre-uninstall script from old version
+      const oldManifest = readPackageManifest(packagePath);
+      if (oldManifest && oldManifest.scripts && oldManifest.scripts.preuninstall) {
+        console.log('Running pre-uninstall script for old version...');
+        execSync(oldManifest.scripts.preuninstall, { cwd: packagePath, stdio: 'inherit' });
+      }
+
+      // Remove old version
+      fs.rmSync(packagePath, { recursive: true, force: true });
+
+      // Install new version
+      fse.copySync(sourcePackageDir, packagePath, { overwrite: true });
+
+      // Run post-install script for new version
+      if (manifest.scripts && manifest.scripts.postinstall) {
+        console.log('Running post-install script for new version...');
+        execSync(manifest.scripts.postinstall, { cwd: packagePath, stdio: 'inherit' });
+      }
+
+      // Update tontoo.json
+      tontooJson.dependencies[pkgName] = {
+        version: manifest.version,
+        registry: `${PACKAGE_REGISTRY_URL}/tree/main/${pkgName}`,
+        installedAt: new Date().toISOString(),
+        previousVersion: pkgData.version
+      };
+      writeTontooJson(tontooJson);
+
+      console.log(`Successfully updated ${pkgName} to version ${manifest.version}!`);
+    } catch (error) {
+      console.error(`Error updating package "${pkgName}": ${error.message}`);
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
   }
 }
 
@@ -219,7 +322,6 @@ function checkSyntax(code, filename) {
     return true;
 }
 
-// New function to remove comments
 function stripComments(code) {
   return code.split('\n').filter(line => !line.trim().startsWith('#')).join('\n');
 }
@@ -251,7 +353,7 @@ function buildProject(devMode = false) {
     }
   }
 
-  // --- Add package files to the build ---
+  // Add package files to the build
   console.log('Adding installed packages...');
   const packagesDir = path.join(rootDir, PACKAGES_DIR_NAME);
   if (fs.existsSync(packagesDir)) {
@@ -264,7 +366,6 @@ function buildProject(devMode = false) {
         }
     }
   }
-  // --- End of package files inclusion ---
 
   if (Object.keys(filesToProcess).length === 0) {
     console.error('Error: No data found to build');
@@ -280,9 +381,7 @@ function buildProject(devMode = false) {
     }
     console.log('Syntax check successful.');
 
-    // -------------------------------------------------------------
     // Create the build file in memory
-    // -------------------------------------------------------------
     const dataToCompress = JSON.stringify(filesToProcess);
     const encryptedData = encryptData(dataToCompress);
     const compressedData = zlib.gzipSync(encryptedData);
@@ -296,9 +395,7 @@ function buildProject(devMode = false) {
       fs.writeFileSync(outFile, compressedData);
       console.log(`\nBuild successful: ${outFile}`);
 
-      // -------------------------------------------------------------
       // Create build file without comments
-      // -------------------------------------------------------------
       const filesWithoutComments = { ...filesToProcess };
       for (const fileName in filesWithoutComments) {
         if (fileName.endsWith('.tont')) {
@@ -311,13 +408,11 @@ function buildProject(devMode = false) {
       const outFileNoComments = path.join(buildDir, `${projectName}_no_comments.tontoo`);
       fs.writeFileSync(outFileNoComments, compressedDataWithoutComments);
 
-      // -------------------------------------------------------------
       // Create source code ZIP archive
-      // -------------------------------------------------------------
       console.log('Creating source code ZIP archive...');
       const outputZip = fs.createWriteStream(path.join(buildDir, `${projectName}_source.zip`));
       const archive = archiver('zip', {
-        zlib: { level: 9 } // Higher compression
+        zlib: { level: 9 }
       });
 
       archive.pipe(outputZip);
@@ -337,7 +432,7 @@ function buildProject(devMode = false) {
     }
 
   } catch (error) {
-    console.error(`\nZip error.`);
+    console.error(`\nBuild error.`);
     console.error(`Error: ${error.message}`);
     if (devMode) console.error('Dev mode canceled.');
     process.exit(1);
@@ -370,12 +465,19 @@ function setupProject() {
     fs.writeFileSync(path.join(sslDir, 'readme.txt'), 'Place your server.key and server.crt files for SSL here.');
   }
 
+  const dbDir = path.join(rootDir, 'db');
+  if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir);
+    fs.writeFileSync(path.join(dbDir, 'readme.txt'), 'Database configuration and migration files go here.');
+  }
+
   const mainTontContent = `dat: Main
 type: Main
 
 load:
 {
   Console
+  Database
 }
 
 VB: PORT: "8080"
@@ -412,8 +514,14 @@ copyFile
 }
 :end:
 
-# Execute the setup function
-:start: "setupFiles"
+# Database configuration
+mysql: "setupDB"
+{
+  "host": "localhost",
+  "user": "root",
+  "password": "",
+  "database": "tontoo_db"
+}
 
 # Define an API to get all news (public)
 webAPI: "getNews"
@@ -432,7 +540,7 @@ webAPI: "getSingleNews"
   "data": "news.json",
   "user": "false",
   "webserverid": "webserver1",
-  "line": "/news/$ID" # Example of a dynamic path
+  "line": "/news/$ID"
 }
 
 # Define an API to post new news (requires login)
@@ -466,6 +574,15 @@ console.log: "Server running on http://$HOST:$PORT and https://$HOST:$SSLPORT"`;
 
   const consoleTontContent = `dat: Console\ntype: Extra\nconsole.log: "Console module loaded."`;
   fs.writeFileSync(path.join(rootDir, 'Console.tont'), consoleTontContent);
+
+  const databaseTontContent = `dat: Database
+type: Database
+
+# Sample database functions
+:start: setupDB
+console.log: "Database module loaded. Configuring MySQL connection..."
+:end:`;
+  fs.writeFileSync(path.join(rootDir, 'Database.tont'), databaseTontContent);
 
   const defaultHtmlContent = `<!DOCTYPE html>
 <html lang="en">
@@ -627,10 +744,9 @@ body {
 }
 
 // =================================================================
-// RUNTIME LOGIC
+// RUNTIME LOGIC (WITH MYSQL SUPPORT)
 // =================================================================
 
-// Main function to run a Tontoo project from a file
 function runProjectFromFile(tontooFile) {
   try {
     const compressedData = fs.readFileSync(tontooFile);
@@ -641,12 +757,12 @@ function runProjectFromFile(tontooFile) {
   }
 }
 
-// Main function to run a Tontoo project from in-memory data
 function runProjectFromData(compressedData, tontooConfigOverride = null) {
   let variables = {};
   let functions = {};
   let webservers = {};
   let apis = {};
+  let mysqlConnections = {};
   let scheduleTasks = [];
   const loadedFiles = new Set();
   let zipEntries = {};
@@ -656,6 +772,10 @@ function runProjectFromData(compressedData, tontooConfigOverride = null) {
 
   const cleanup = () => {
     console.log('Tontoo runtime ended. Cleaning up...');
+    // Close all MySQL connections
+    Object.values(mysqlConnections).forEach(conn => {
+      conn.end().catch(e => console.error('Error closing MySQL connection:', e.message));
+    });
     fs.rmSync(workingDir, { recursive: true, force: true });
     process.exit(0);
   };
@@ -694,32 +814,65 @@ function runProjectFromData(compressedData, tontooConfigOverride = null) {
     const filePath = path.join(workingDir, parseValue(file));
     try { fs.unlinkSync(filePath); } catch (e) { console.error(`Error: Could not delete file "${file}": ${e.message}`); }
   }
+
   function deleteFolder(folder) {
     const folderPath = path.join(workingDir, parseValue(folder));
     try { fs.rmSync(folderPath, { recursive: true, force: true }); } catch (e) { console.error(`Error: Could not delete folder "${folder}": ${e.message}`); }
   }
+
   function moveFile(from, to) {
     const fromPath = path.join(workingDir, parseValue(from));
     const toPath = path.join(workingDir, parseValue(to));
     try { fs.renameSync(fromPath, toPath); } catch (e) { console.error(`Error: Could not move file from "${from}" to "${to}": ${e.message}`); }
   }
+
   function addFolder(folder) {
     const parsedFolder = path.join(workingDir, parseValue(folder));
     if (!fs.existsSync(parsedFolder)) fs.mkdirSync(parsedFolder, { recursive: true });
   }
+
   function addFile(file) {
     const parsedFile = path.join(workingDir, parseValue(file));
     if (!fs.existsSync(parsedFile)) fs.writeFileSync(parsedFile, '');
   }
+
   function editFile(file, content) {
     fs.writeFileSync(path.join(workingDir, parseValue(file)), parseValue(content));
   }
+
   function runCmd(cmd, wait = false) {
     const parsedCmd = parseValue(cmd);
     try {
       if (wait) { execSync(parsedCmd, { cwd: workingDir, stdio: 'inherit' }); }
       else { exec(parsedCmd, { cwd: workingDir }); }
     } catch (e) { console.error(`Error: Command failed "${parsedCmd}": ${e.message}`); }
+  }
+
+  async function setupMySQLConnection(id, config) {
+    try {
+      const connection = await mysql.createConnection({
+        host: parseValue(config.host),
+        user: parseValue(config.user),
+        password: parseValue(config.password),
+        database: parseValue(config.database)
+      });
+      
+      mysqlConnections[id] = connection;
+      console.log(`MySQL connection "${id}" established successfully.`);
+      
+      // Add query function to variables
+      variables[`${id}_query`] = async (sql, params = []) => {
+        try {
+          const [rows] = await connection.query(sql, params);
+          return rows;
+        } catch (e) {
+          console.error(`MySQL query error: ${e.message}`);
+          throw e;
+        }
+      };
+    } catch (e) {
+      console.error(`Error creating MySQL connection "${id}": ${e.message}`);
+    }
   }
 
   function generateSslCert(sslDir, bits) {
@@ -939,6 +1092,26 @@ function runProjectFromData(compressedData, tontooConfigOverride = null) {
       if (line.startsWith('console.log:')) { const msg=line.substring(line.indexOf(':')+1).trim().replace(/^"|"$/g,''); const fn=()=>log(msg); if(inFunction)functionBuffer.push(fn); else fn(); i++; continue; }
       if (line.startsWith('run:')) { const cmd=line.substring(line.indexOf(':')+1).trim(); let wait=false; if(lines[i+1]?.includes('"wait"')){ wait=lines[i+1].includes('"true"'); i+=2; } const fn=()=>runCmd(cmd,wait); if(inFunction)functionBuffer.push(fn); else fn(); i++; continue; }
 
+      if (line.startsWith('mysql:')) {
+          const connId = line.split(':')[1].trim().replace(/"/g, '');
+          let config = {};
+          i++;
+          while (i < lines.length && !lines[i].trim().startsWith('}')) {
+              const l = lines[i].trim();
+              if (l.includes(':')) {
+                  const parts = l.split(':');
+                  const k = parts[0].replace(/"|,|#/g, '').trim();
+                  const v = parts.slice(1).join(':').replace(/"|,|#/g, '').trim();
+                  config[k] = v;
+              }
+              i++;
+          }
+          const fn = () => setupMySQLConnection(connId, config);
+          if (inFunction) functionBuffer.push(fn); else fn();
+          i++;
+          continue;
+      }
+
       if (line.startsWith('webAPI:')) {
           const apiName = line.split(':')[1].trim().replace(/"/g, '');
           let config = { name: apiName };
@@ -1027,10 +1200,6 @@ function runProjectFromData(compressedData, tontooConfigOverride = null) {
     }
   }
 
-  // The function to load and execute has been split into two parts.
-  // runProjectFromFile is for loading from disk.
-  // runProjectFromData is for processing the data.
-
   try {
     const encryptedData = zlib.gunzipSync(compressedData).toString('utf8');
     const decryptedData = decryptData(encryptedData);
@@ -1077,4 +1246,36 @@ function runProjectFromData(compressedData, tontooConfigOverride = null) {
     console.error(`Error: Main file '${mainFileName}' was not found in the archive.`);
     cleanup();
   }
+}
+
+// =================================================================
+// HELPER FUNCTIONS
+// =================================================================
+
+function showHelp() {
+  console.log(`
+
+  Tontoo Code
+
+  Commands:
+  tontoo <file.tontoo>      Run a Tontoo project file
+  tontoo build              Build the current project
+  tontoo setup              Create a new Tontoo project
+  tontoo dev                Run in development mode
+  tontoo info               Show version information
+  tontoo install <package>  Install a package
+  tontoo uninstall <package> Uninstall a package
+  tontoo update [package]   Update all or specific packages
+  `);
+}
+
+function showInfo() {
+  console.log(`
+  Tontoo Code - Info
+  ---------------------
+  Version:    ${TONTOO_VERSION}
+  Developer:  ${DEVELOPER_NAME}
+  Website:    ${DEVELOPER_WEBSITE}
+  Repo:       ${DEVELOPER_REPO}
+  `);
 }
