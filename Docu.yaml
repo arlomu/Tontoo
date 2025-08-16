@@ -1,158 +1,333 @@
-# Tontoo Code Documentation
+# Tontoo Framework Documentation
 version: 1.9.0
 author: arlomu
 website: https://arlocraftmc.de
+description: |
+  A lightweight web development framework with built-in package management,
+  database integration, and web server capabilities.
 
-# Core Features
-features:
-  - Build system for Tontoo projects
-  - Package management
-  - Web server with SSL support
-  - API endpoints
-  - User authentication
-  - MySQL database integration
-  - File operations
-  - Command execution
+# CORE FEATURES
+core_features:
+  - name: Build System
+    description: Compiles projects into executable .tontoo files
+    features:
+      - Project compilation
+      - Syntax checking
+      - Comment stripping
+      - Source code archiving
+      - Encryption and compression
 
-# Commands
-commands:
-  - name: build
-    description: Build the current project into a .tontoo file
-    usage: tontoo build
-  
-  - name: dev
-    description: Run the project in development mode
+  - name: Package Management
+    description: Install, manage and update third-party packages
+    features:
+      - Versioned package installation
+      - Dependency tracking
+      - Package manifests (YAML)
+      - Post-install scripts
+      - Update system
+      - Git-based registry
+
+  - name: Web Server
+    description: Built-in HTTP/HTTPS server with API support
+    features:
+      - Static file serving
+      - SSL/TLS encryption
+      - Custom error pages
+      - Dynamic routing
+      - Middleware support
+      - Session management
+
+  - name: Database Integration
+    description: MySQL database connectivity
+    features:
+      - Connection pooling
+      - Query execution
+      - Parameterized queries
+      - Connection management
+
+# COMMAND LINE INTERFACE
+cli_commands:
+  - command: build
+    description: Compile the current project
+    options:
+      - --dev: Development mode (in-memory execution)
+    usage: tontoo build [--dev]
+
+  - command: dev
+    description: Run project in development mode
     usage: tontoo dev
-  
-  - name: setup
-    description: Create a new Tontoo project structure
+
+  - command: setup
+    description: Initialize new project structure
+    generated_files:
+      - tontoo.json
+      - Main.tont
+      - Console.tont
+      - Database.tont
+      - public/ directory
+      - ssl/ directory
+      - db/ directory
     usage: tontoo setup
-  
-  - name: install
+
+  - command: install
     description: Install a package
-    usage: tontoo install <package_name>[@version]
-  
-  - name: uninstall
-    description: Uninstall a package
-    usage: tontoo uninstall <package_name>
-  
-  - name: update
-    description: Update all or specific packages
-    usage: tontoo update [package_name]
-  
-  - name: info
-    description: Show version information
+    parameters:
+      - package_name: Name of package to install
+      - @version: Optional version specifier
+    usage: tontoo install <package>[@version]
+
+  - command: uninstall
+    description: Remove a package
+    parameters:
+      - package_name: Name of package to remove
+    usage: tontoo uninstall <package>
+
+  - command: update
+    description: Update packages
+    parameters:
+      - package_name: Optional specific package to update
+    usage: tontoo update [package]
+
+  - command: info
+    description: Show framework information
     usage: tontoo info
-  
-  - name: run
-    description: Run a .tontoo project file
+
+  - command: run
+    description: Execute a .tontoo file
+    parameters:
+      - filename: .tontoo file to execute
     usage: tontoo <file.tontoo>
 
-# Package System
-package_system:
-  manifest: package.yml
-  location: tont-packets/
-  features:
-    - Version management
-    - Dependency tracking
-    - Post-install scripts
-    - Pre-uninstall scripts
-    - Metadata (name, version, description)
-
-# Language Syntax
+# LANGUAGE SYNTAX
 syntax:
   variables:
-    - pattern: VB: NAME: "value"
+    - pattern: VB: VAR_NAME: "value"
       description: Define a variable
-  
+      example: |
+        VB: PORT: "8080"
+        VB: DB_HOST: "localhost"
+
   functions:
-    - pattern: :start: functionName
-      description: Start a function block
-    - pattern: :end:
-      description: End a function block
-  
+    - pattern: |
+        :start: functionName
+        // commands
+        :end:
+      description: Define a function block
+      example: |
+        :start: setupServer
+        console.log: "Starting server..."
+        startWEB: /public/ { "port": "$PORT" }
+        :end:
+
   mysql:
-    - pattern: mysql: "connectionId" { config }
+    - pattern: |
+        mysql: "connectionId"
+        {
+          "host": "value",
+          "user": "value",
+          "password": "value",
+          "database": "value"
+        }
       description: Setup MySQL connection
-  
+      example: |
+        mysql: "mainDB"
+        {
+          "host": "localhost",
+          "user": "root",
+          "password": "secret",
+          "database": "app_db"
+        }
+
   web_api:
-    - pattern: webAPI: "apiName" { config }
+    - pattern: |
+        webAPI: "apiName"
+        {
+          "type": "get|post",
+          "data": "source",
+          "user": "true|false",
+          "webserverid": "serverId",
+          "line": "/api/path"
+        }
       description: Define a web API endpoint
-  
+      example: |
+        webAPI: "getUsers"
+        {
+          "type": "get",
+          "data": "users.json",
+          "user": "true",
+          "webserverid": "main",
+          "line": "/users/"
+        }
+
   web_server:
-    - pattern: startWEB: "/path" { config }
+    - pattern: |
+        startWEB: "/publicPath"
+        {
+          "port": "number",
+          "host": "string",
+          "landing": "file",
+          "404": "file",
+          "ssl": "true|false",
+          "sslport": "number",
+          "sslbits": "number",
+          "api": "/basePath",
+          "user": "true|false"
+        }
       description: Start a web server
-  
+      example: |
+        startWEB: /public/
+        {
+          "port": "8080",
+          "host": "localhost",
+          "landing": "index.html",
+          "404": "404.html",
+          "ssl": "true",
+          "sslport": "443",
+          "sslbits": "2048",
+          "api": "/api/",
+          "user": "true"
+        }
+
   file_operations:
-    - pattern: copyFile { "from": "source", "to": "dest" }
+    - pattern: |
+        copyFile
+        {
+          "from": "source",
+          "to": "destination"
+        }
       description: Copy a file
+      example: |
+        copyFile
+        {
+          "from": "template.html",
+          "to": "public/index.html"
+        }
+
     - pattern: deleteFile "path"
       description: Delete a file
+      example: deleteFile "temp/file.txt"
+
     - pattern: addFolder "path"
-      description: Create a folder
-  
-  commands:
+      description: Create a directory
+      example: addFolder "public/uploads"
+
+  system_commands:
     - pattern: run: "command"
-      description: Execute a system command
-  
+      description: Execute system command
+      options:
+        - wait: "true|false" (Wait for completion)
+      example: |
+        run: "npm install"
+        wait: "true"
+
+  scheduling:
+    - pattern: schedule: "seconds" "functionName"
+      description: Schedule function execution
+      example: schedule: "60" "hourlyTask"
+
   logging:
     - pattern: console.log: "message"
-      description: Print a message to console
+      description: Print to console
+      example: console.log: "Server started on port $PORT"
 
-# MySQL Integration
-mysql:
-  connection:
-    parameters:
-      - host
-      - user
-      - password
-      - database
-  usage: |
-    After setting up a connection with mysql: "id" { config },
-    you can use ${id}_query(sql, params) to execute queries
+# PACKAGE SYSTEM DETAILS
+package_system:
+  manifest_format:
+    name: Package name
+    version: Semantic version
+    description: Package description
+    author: Package author
+    scripts:
+      postinstall: Command to run after install
+      preuninstall: Command to run before uninstall
+    dependencies: List of dependencies
 
-# Web Server Features
-web_server:
-  features:
-    - Static file serving
-    - SSL/TLS support
-    - Custom error pages
-    - API routing
-    - User authentication
-  config_options:
-    - port: HTTP port
-    - host: Server host
-    - path: Public directory
-    - landing: Default file
-    - 404: Custom 404 page
-    - ssl: Enable SSL (true/false)
-    - sslport: HTTPS port
-    - sslbits: Key strength
-    - api: API base path
-    - user: Enable auth (true/false)
+  example_manifest: |
+    name: database-utils
+    version: 1.2.0
+    description: Database helper functions
+    author: db-team
+    scripts:
+      postinstall: "npm install mysql2"
+      preuninstall: "echo 'Removing database utils'"
+    dependencies: []
 
-# Examples
-examples:
-  - name: Basic web server
-    code: |
-      startWEB: /public/
-      {
-        "port": "8080",
-        "host": "localhost",
-        "landing": "index.html"
-      }
-  
-  - name: MySQL connection
-    code: |
-      mysql: "db"
-      {
-        "host": "localhost",
-        "user": "root",
-        "password": "",
-        "database": "test"
-      }
-      
-      :start: getUsers
-      const users = await ${db}_query("SELECT * FROM users");
-      console.log: "Users: ${users}"
-      :end:
+  directory_structure:
+    - tont-packets/: Package installation directory
+    - package.yml: Manifest file in each package
+
+# DATABASE INTEGRATION
+database:
+  connection_management:
+    - Automatic connection pooling
+    - Connection cleanup on exit
+    - Error handling
+
+  query_execution:
+    - pattern: ${connectionId}_query("SQL", [params])
+      description: Execute parameterized query
+      example: |
+        :start: getUsers
+        const users = await ${mainDB}_query("SELECT * FROM users WHERE active = ?", [1]);
+        console.log: "Active users: ${users.length}"
+        :end:
+
+  transaction_support: Planned in v2.0
+
+# SECURITY FEATURES
+security:
+  - AES-256-CBC project encryption
+  - SHA-256 password hashing
+  - Secure session management
+  - CSRF protection (planned)
+  - CORS configuration (planned)
+  - Automatic SSL certificate generation
+
+# TEMPLATE PROJECT STRUCTURE
+project_structure:
+  - tontoo.json: Project configuration
+  - Main.tont: Entry point
+  - Console.tont: Console utilities
+  - Database.tont: Database setup
+  - public/: Web root
+    - index.html
+    - style.css
+    - js/
+    - 404.html
+  - ssl/: SSL certificates
+  - db/: Database scripts
+  - tont-packets/: Installed packages
+  - build/: Compiled output
+
+# EXAMPLE PROJECT
+example_project:
+  structure:
+    - Main.tont: Web server config and routes
+    - Database.tont: DB connection setup
+    - public/: Frontend files
+    - ssl/: Certificate files
+    - users.json: User database
+
+  workflow:
+    - tontoo setup: Initialize project
+    - tontoo install db-helpers: Add package
+    - tontoo dev: Run in development
+    - tontoo build: Create production build
+
+# VERSION HISTORY
+versions:
+  - version: 1.9.0
+    date: 2023-11-15
+    changes:
+      - Added MySQL integration
+      - Improved package system
+      - Added update command
+      - Enhanced documentation
+
+  - version: 1.8.0
+    date: 2023-10-01
+    changes:
+      - Initial public release
+      - Basic web server
+      - Package management
+      - Build system
