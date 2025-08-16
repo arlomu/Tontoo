@@ -38,7 +38,7 @@ npm install -g .
 cd ../..
 
 echo "75% [#########]"
-# rm -rf Tontoo
-# rm install.sh
+rm -rf Tontoo
+rm install.sh
 
 echo "Tontoo is Installed!"
