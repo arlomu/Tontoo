@@ -37,13 +37,13 @@ git clone https://github.com/arlomu/Tontoo || (echo Cloning Error & exit /b 1)
 cd Tontoo\CLI || (echo Error & exit /b 1)
 
 echo 54%% [########]
-npm install -g .
+npm uninstall -g tontoo
+npm install -g
 
 cd ..\..
 
 echo 75%% [#########]
 rmdir /s /q Tontoo
-del install.bat
 
 echo Tontoo is Installed!
 pause
