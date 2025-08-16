@@ -11,7 +11,16 @@
   "license": "ISC",
   "dependencies": {
     "archiver": "^7.0.1",
+    "child_process": "^1.0.2",
+    "crypto": "^1.0.1",
+    "fs": "^0.0.1-security",
     "fs-extra": "^11.3.1",
-    "yauzl": "^2.10.0"
+    "http": "^0.0.1-security",
+    "https": "^1.0.0",
+    "os": "^0.1.2",
+    "path": "^0.12.7",
+    "url": "^0.11.4",
+    "yauzl": "^2.10.0",
+    "zlib": "^1.0.5"
   }
 }
