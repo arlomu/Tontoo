@@ -13,14 +13,10 @@ A modern, expressive programming language built on Node.js, designed to make pro
 
 ## Installation
 
-### Global Installation
+### Global Installation Linux
 ```bash
-npm install -g tontoo
-```
-
-### Local Installation
-```bash
-npm install tontoo
+curl -fsSL https://raw.githubusercontent.com/arlomu/Tontoo/main/install.sh 
+sudo bash install.sh
 ```
 
 ### From Source
