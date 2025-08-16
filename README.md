@@ -21,11 +21,9 @@ sudo bash install.sh
 
 ### From Source
 ```bash
-git clone https://github.com/username/tontoo.git
-cd tontoo
-npm install
-npm run build
-npm link
+git clone https://github.com/arlomu/Tontoo.git
+cd Tontoo
+npm install -g
 ```
 
 ## Project Setup
