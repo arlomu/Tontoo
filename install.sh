@@ -30,12 +30,13 @@ fi
 
 git clone https://github.com/arlomu/Tontoo || { echo "Cloning Error"; exit 1; }
 
+cd Tontoo/CLI
+
 echo "54% [########]"
 npm uninstall -g tontoo
 npm install -g Tontoo-Code.tgz
 
 cd ../..
-
 echo "75% [#########]"
 rm -rf Tontoo
 

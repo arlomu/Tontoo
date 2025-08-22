@@ -38,7 +38,7 @@ cd Tontoo\CLI || (echo Error & exit /b 1)
 
 echo 54%% [########]
 npm uninstall -g tontoo
-npm install -g
+npm install -g Tontoo-Code.tgz
 
 cd ..\..
 
