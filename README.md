@@ -15,8 +15,7 @@ A modern, expressive programming language built on Node.js, designed to make pro
 
 ### Installation Linux
 ```bash
-curl -O https://raw.githubusercontent.com/arlomu/Tontoo/main/install.sh
-sudo bash install.sh
+sudo curl -fsSL https://raw.githubusercontent.com/arlomu/Tontoo/main/install.sh | sh
 ```
 
 ### Installation Windows
